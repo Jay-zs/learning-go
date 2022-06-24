@@ -1,0 +1,25 @@
+mode: count
+TestInter/main.go:26.35,27.35 1 1
+TestInter/main.go:30.2,30.29 1 1
+TestInter/main.go:27.35,29.3 1 0
+TestInter/main.go:32.34,33.32 1 1
+TestInter/main.go:36.2,36.32 1 1
+TestInter/main.go:33.32,35.3 1 0
+TestInter/main.go:38.32,39.18 1 1
+TestInter/main.go:42.2,43.32 2 1
+TestInter/main.go:39.18,41.3 1 0
+TestInter/main.go:45.32,46.16 1 2
+TestInter/main.go:49.2,49.28 1 1
+TestInter/main.go:46.16,48.3 1 1
+TestInter/main.go:52.40,53.35 1 1
+TestInter/main.go:56.2,56.35 1 1
+TestInter/main.go:53.35,55.3 1 0
+TestInter/main.go:58.39,59.38 1 1
+TestInter/main.go:62.2,62.27 1 1
+TestInter/main.go:59.38,61.3 1 0
+TestInter/main.go:64.37,65.18 1 1
+TestInter/main.go:68.2,69.32 2 1
+TestInter/main.go:65.18,67.3 1 0
+TestInter/main.go:71.37,72.16 1 2
+TestInter/main.go:75.2,75.19 1 1
+TestInter/main.go:72.16,74.3 1 1

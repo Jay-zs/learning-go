@@ -1,0 +1,14 @@
+mode: count
+ttd-sql/main.go:21.43,23.16 2 3
+ttd-sql/main.go:26.2,27.20 2 3
+ttd-sql/main.go:30.2,32.16 3 2
+ttd-sql/main.go:35.2,36.17 2 1
+ttd-sql/main.go:23.16,25.3 1 0
+ttd-sql/main.go:27.20,29.3 1 1
+ttd-sql/main.go:32.16,34.3 1 1
+ttd-sql/main.go:39.39,41.16 2 2
+ttd-sql/main.go:44.2,48.117 5 2
+ttd-sql/main.go:53.2,53.20 1 1
+ttd-sql/main.go:41.16,43.3 1 0
+ttd-sql/main.go:48.117,49.27 1 1
+ttd-sql/main.go:49.27,51.4 1 1
