@@ -8,6 +8,9 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type Book struct {
@@ -70,23 +73,33 @@ func getBook(response http.ResponseWriter, request *http.Request) {
 }
 
 func getBookById(response http.ResponseWriter, request *http.Request) {
-	id := mux.Vars(request)["id"]
+	fmt.Println(request.URL.Path)
+	id, err := strconv.Atoi(mux.Vars(request)["I"])
+	fmt.Println(id)
+	if err != nil {
+		log.Print(err)
+		response.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(response).Encode(Book{})
+		return
+	}
 	db := dbConn()
 	defer db.Close()
 	bookrow := db.QueryRow("select * from Books where id=?;", id)
 	book := Book{}
-	author := Author{}
-	author_id := 0
-	err := bookrow.Scan(&book.Id, &book.Title, &book.Publication, &book.PublishedDate, &author_id)
+	err = bookrow.Scan(&book.Id, &book.Title, &book.Publication, &book.PublishedDate, &book.Author.Id)
+	if err != nil {
+		log.Print(err)
+		if err == sql.ErrNoRows {
+			response.WriteHeader(404)
+			json.NewEncoder(response).Encode(book)
+			return
+		}
+	}
+	authorrow := db.QueryRow("select * from Authors where id=?;", book.Author.Id)
+	err = authorrow.Scan(&book.Author.Id, &book.Author.FirstName, &book.Author.LastName, &book.Author.Dob, &book.Author.PenName)
 	if err != nil {
 		log.Print(err)
 	}
-	authorrow := db.QueryRow("select * from Authors where id=?;", author_id)
-	err = authorrow.Scan(&author.Id, &author.FirstName, &author.LastName, &author.Dob, &author.PenName)
-	if err != nil {
-		log.Print(err)
-	}
-	book.Author = author
 	json.NewEncoder(response).Encode(book)
 }
 
@@ -96,8 +109,42 @@ func postBook(response http.ResponseWriter, request *http.Request) {
 	decoder := json.NewDecoder(request.Body)
 	b := Book{}
 	err := decoder.Decode(&b)
+	if b.Title == "" {
+		response.WriteHeader(400)
+		json.NewEncoder(response).Encode(Book{})
+		return
+	}
+	BookId := 0
+	err = db.QueryRow("select id from Books where title=? and author_id=?;", b.Title, b.Author.Id).Scan(&BookId)
+	if err == nil {
+		response.WriteHeader(400)
+		json.NewEncoder(response).Encode(Book{})
+		return
+	}
+	authorRow := db.QueryRow("select id from Authors where id=?;", b.Author.Id)
+	authorId := 0
+	err = authorRow.Scan(&authorId)
 	if err != nil {
-		panic(err)
+		log.Print(err)
+		response.WriteHeader(400)
+		json.NewEncoder(response).Encode(Book{})
+		return
+	}
+	if !(b.Publication == "Scholastic" || b.Publication == "Pengiun" || b.Publication == "Arihanth") {
+		response.WriteHeader(400)
+		json.NewEncoder(response).Encode(Book{})
+		return
+	}
+	publicationYear, err := strconv.Atoi(strings.Split(b.PublishedDate, "/")[2])
+	if err != nil {
+		log.Print("invalid date")
+		json.NewEncoder(response).Encode(Book{})
+		return
+	}
+	if !(publicationYear >= 1880 && publicationYear <= time.Now().Year()) {
+		log.Print("invalid date")
+		json.NewEncoder(response).Encode(Book{})
+		return
 	}
 	res, err := db.Exec("INSERT INTO Books (title, publication, published_date, author_id)\nVALUES (?,?,?,?);", b.Title, b.Publication, b.PublishedDate, b.Author.Id)
 	id, _ := res.LastInsertId()
@@ -121,8 +168,13 @@ func postAuthor(response http.ResponseWriter, request *http.Request) {
 		json.NewEncoder(response).Encode(Author{})
 		return
 	}
-	if err != nil {
-		panic(err)
+	existingAuthorId := 0
+	err = db.QueryRow("SELECT id from Authors where first_name=? and last_name=? and dob=? and pen_name=?", a.FirstName, a.LastName, a.Dob, a.PenName).Scan(&existingAuthorId)
+	if err == nil {
+		log.Print("author already exists")
+		response.WriteHeader(400)
+		json.NewEncoder(response).Encode(Author{})
+		return
 	}
 	res, err := db.Exec("INSERT INTO Authors (first_name, last_name, dob, pen_name)\nVALUES (?,?,?,?);", a.FirstName, a.LastName, a.Dob, a.PenName)
 	id, err := res.LastInsertId()
@@ -145,31 +197,63 @@ func putBook(response http.ResponseWriter, request *http.Request) {
 }
 
 func deleteAuthor(response http.ResponseWriter, request *http.Request) {
-
+	db := dbConn()
+	defer db.Close()
+	id := mux.Vars(request)["id"]
+	fmt.Println(id)
+	_, err := db.Exec("delete from Books where author_id=?;", id)
+	if err != nil {
+		log.Print(err)
+		response.WriteHeader(400)
+		return
+	}
+	_, err = db.Exec("delete from Authors where id=?;", id)
+	if err != nil {
+		response.WriteHeader(400)
+		return
+	}
+	response.WriteHeader(200)
 }
 
 func deleteBook(response http.ResponseWriter, request *http.Request) {
+	db := dbConn()
+	defer db.Close()
+	id := mux.Vars(request)["id"]
+	fmt.Println(id)
+	bookId := 0
+	err := db.QueryRow("select id from Books where id=?;", id).Scan(&bookId)
+	if err == nil {
+		_, err = db.Exec("delete from Books where author_id=?;", id)
+		if err != nil {
+			response.WriteHeader(400)
+			return
+		}
+	} else {
+		response.WriteHeader(400)
+		return
+	}
 
+	response.WriteHeader(200)
 }
 
 func main() {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/book", getBook).Methods(http.MethodGet)
+	r.HandleFunc("http://localhost:8000/book", getBook).Methods(http.MethodGet)
 
-	r.HandleFunc("/book/{id}", getBookById).Methods(http.MethodGet)
+	r.HandleFunc("http://localhost:8000/book/{I}", getBookById).Methods(http.MethodGet)
 
-	r.HandleFunc("/book", postBook).Methods(http.MethodPost)
+	r.HandleFunc("http://localhost:8000/book", postBook).Methods(http.MethodPost)
 
-	r.HandleFunc("/author", postAuthor).Methods(http.MethodPost)
+	r.HandleFunc("http://localhost:8000/author", postAuthor).Methods(http.MethodPost)
 
-	r.HandleFunc("/book/{id}", putBook).Methods(http.MethodPut)
+	r.HandleFunc("http://localhost:8000/book/{id}", putBook).Methods(http.MethodPut)
 
-	r.HandleFunc("/author/{id}", putAuthor).Methods(http.MethodPut)
+	r.HandleFunc("http://localhost:8000/author/{id}", putAuthor).Methods(http.MethodPut)
 
-	r.HandleFunc("/book/{id}", deleteBook).Methods(http.MethodDelete)
+	r.HandleFunc("http://localhost:8000/book/{id}", deleteBook).Methods(http.MethodDelete)
 
-	r.HandleFunc("/author/{id}", deleteAuthor).Methods(http.MethodDelete)
+	r.HandleFunc("http://localhost:8000/author/{id}", deleteAuthor).Methods(http.MethodDelete)
 
 	Server := http.Server{
 		Addr:    ":8000",

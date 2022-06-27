@@ -18,12 +18,12 @@ func TestGetBook(t *testing.T) {
 		expStatus int
 	}{
 		{"get all books", "/book", []Book{
-			{2, "Maths", Author{Id: 1}, "rd sharma", ""},
+			{1, "Jay", Author{Id: 1}, "Pengiun", "11/03/2002"},
 		}, http.StatusOK},
-		{"get all books with query param", "/book?title=Maths", []Book{
-			{2, "Maths", Author{Id: 1}, "rd sharma", ""}}, http.StatusOK},
+		{"get all books with query param", "/book?title=Jay", []Book{
+			{1, "Jay", Author{Id: 1}, "Pengiun", "11/03/2002"}}, http.StatusOK},
 		{"get all books with query param", "/book?includeAuthor=true", []Book{
-			{2, "Maths", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "rd sharma", ""}}, http.StatusOK},
+			{1, "Jay", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "Pengiun", "11/03/2002"}}, http.StatusOK},
 	}
 	for j, tc := range testcases {
 		w := httptest.NewRecorder()
@@ -62,13 +62,13 @@ func TestGetBookById(t *testing.T) {
 		expRes    Book
 		expStatus int
 	}{
-		{"get book", "2", Book{2, "Maths", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "", ""}, http.StatusOK},
-		{"Id doesn't exist", "1000", Book{}, http.StatusBadRequest},
-		{"Invalid Id", "abc", Book{}, http.StatusNotFound},
+		{"get book", "/book/1", Book{1, "Jay", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "Pengiun", "11/03/2002"}, http.StatusOK},
+		{"Id doesn't exist", "/book/1000", Book{}, http.StatusNotFound},
+		{"Invalid Id", "/book/abc", Book{}, http.StatusBadRequest},
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "localhost:8000/book/"+tc.req, nil)
+		req := httptest.NewRequest(http.MethodGet, "localhost:8000"+tc.req, nil)
 		getBookById(w, req)
 		defer w.Result().Body.Close()
 
@@ -107,7 +107,7 @@ func TestPostBook(t *testing.T) {
 		{"Published date should be between 1880 and 2022", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/2222"}, Book{}, http.StatusBadRequest},
 		{"Author should exist", Book{Title: "Jay", Author: Author{Id: 2}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
 		{"Title can't be empty", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: ""}, Book{}, http.StatusBadRequest},
-		{"Book already exists", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, http.StatusConflict},
+		{"Book already exists", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
@@ -227,12 +227,12 @@ func TestDeleteBook(t *testing.T) {
 		reqId     string
 		expStatus int
 	}{
-		{"Valid Details", "1", http.StatusOK},
+		{"Valid Details", "2", http.StatusOK},
 		{"Book does not exists", "100", http.StatusNotFound},
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodDelete, "localhost:8000/book/"+tc.reqId, nil)
+		req := httptest.NewRequest(http.MethodDelete, "http://localhost:8000/book/"+tc.reqId, nil)
 		deleteBook(w, req)
 		defer w.Result().Body.Close()
 
