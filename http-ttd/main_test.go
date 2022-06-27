@@ -18,13 +18,12 @@ func TestGetBook(t *testing.T) {
 		expStatus int
 	}{
 		{"get all books", "/book", []Book{
-			{1, "Jay", nil, "Jay", "11/03/2002"},
-			{2, "Goyal", nil, "Goyal", "11/03/2002"},
+			{2, "Maths", Author{Id: 1}, "rd sharma", ""},
 		}, http.StatusOK},
-		{"get all books with query param", "/book?title=Jay", []Book{
-			{1, "Jay", nil, "Jay", "11/03/2002"}}, http.StatusOK},
+		{"get all books with query param", "/book?title=Maths", []Book{
+			{2, "Maths", Author{Id: 1}, "rd sharma", ""}}, http.StatusOK},
 		{"get all books with query param", "/book?includeAuthor=true", []Book{
-			{1, "Jay", &Author{}, "Jay", "11/03/2002"}}, http.StatusOK},
+			{2, "Maths", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "rd sharma", ""}}, http.StatusOK},
 	}
 	for j, tc := range testcases {
 		w := httptest.NewRecorder()
@@ -63,7 +62,7 @@ func TestGetBookById(t *testing.T) {
 		expRes    Book
 		expStatus int
 	}{
-		{"get book", "1", Book{1, "Jay", &Author{1, "jay", "Goyal", "11/03/2002", ""}, "", "11/03/2002"}, http.StatusOK},
+		{"get book", "2", Book{2, "Maths", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "", ""}, http.StatusOK},
 		{"Id doesn't exist", "1000", Book{}, http.StatusBadRequest},
 		{"Invalid Id", "abc", Book{}, http.StatusNotFound},
 	}
@@ -102,13 +101,13 @@ func TestPostBook(t *testing.T) {
 		expRes    Book
 		expStatus int
 	}{
-		{"Valid Details", Book{Title: "Jay", Author: &Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{1, "Jay", &Author{Id: 1}, "Pengiun", "11/03/2002"}, 200},
-		{"Publication should be Scholastic/Pengiun/Arihanth", Book{Title: "Jay", Author: &Author{Id: 1}, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
-		{"Published date should be between 1880 and 2022", Book{Title: "", Author: &Author{Id: 1}, Publication: "", PublishedDate: "1/1/1870"}, Book{}, http.StatusBadRequest},
-		{"Published date should be between 1880 and 2022", Book{Title: "", Author: &Author{Id: 1}, Publication: "", PublishedDate: "1/1/2222"}, Book{}, http.StatusBadRequest},
-		{"Author should exist", Book{Title: "Jay", Author: &Author{Id: 2}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
-		{"Title can't be empty", Book{Title: "", Author: nil, Publication: "", PublishedDate: ""}, Book{}, http.StatusBadRequest},
-		{"Book already exists", Book{Title: "Jay", Author: &Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, http.StatusConflict},
+		{"Valid Details", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{1, "Jay", Author{Id: 1}, "Pengiun", "11/03/2002"}, 200},
+		{"Publication should be Scholastic/Pengiun/Arihanth", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
+		{"Published date should be between 1880 and 2022", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/1870"}, Book{}, http.StatusBadRequest},
+		{"Published date should be between 1880 and 2022", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/2222"}, Book{}, http.StatusBadRequest},
+		{"Author should exist", Book{Title: "Jay", Author: Author{Id: 2}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
+		{"Title can't be empty", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: ""}, Book{}, http.StatusBadRequest},
+		{"Book already exists", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, http.StatusConflict},
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
@@ -167,12 +166,12 @@ func TestPutBook(t *testing.T) {
 		expRes    Book
 		expStatus int
 	}{
-		{"Valid Details", "1", Book{Title: "Jay", Author: nil, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, 200},
-		{"Publication should be Scholastic/Pengiun/Arihanth", "1", Book{Title: "Jay", Author: nil, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
-		{"Published date should be between 1880 and 2022", "1", Book{Title: "", Author: nil, Publication: "", PublishedDate: "1/1/1870"}, Book{}, http.StatusBadRequest},
-		{"Published date should be between 1880 and 2022", "1", Book{Title: "", Author: nil, Publication: "", PublishedDate: "1/1/2222"}, Book{}, http.StatusBadRequest},
+		{"Valid Details", "1", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, 200},
+		{"Publication should be Scholastic/Pengiun/Arihanth", "1", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
+		{"Published date should be between 1880 and 2022", "1", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/1870"}, Book{}, http.StatusBadRequest},
+		{"Published date should be between 1880 and 2022", "1", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/2222"}, Book{}, http.StatusBadRequest},
 		{"Author should exist", "1", Book{}, Book{}, http.StatusBadRequest},
-		{"Title can't be empty", "1", Book{Title: "", Author: nil, Publication: "", PublishedDate: ""}, Book{}, http.StatusBadRequest},
+		{"Title can't be empty", "1", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: ""}, Book{}, http.StatusBadRequest},
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
