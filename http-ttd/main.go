@@ -42,6 +42,15 @@ func dbConn() (db *sql.DB) {
 	return db
 }
 
+const (
+	PubName1        = "Penguin"
+	PubName2        = "Scholastic"
+	PubName3        = "Arihanth"
+	GetAuthorById   = "select * from Authors where id=?;"
+	GetBooks        = "select * from Books;"
+	GetBooksByTitle = "select * from Books where title=?;"
+)
+
 func getBook(response http.ResponseWriter, request *http.Request) {
 	db := dbConn()
 	defer db.Close()
@@ -50,9 +59,9 @@ func getBook(response http.ResponseWriter, request *http.Request) {
 	var rows *sql.Rows
 	var err error
 	if title == "" {
-		rows, err = db.Query("select * from Books;")
+		rows, err = db.Query(GetBooks)
 	} else {
-		rows, err = db.Query("select * from Books where title=?;", title)
+		rows, err = db.Query(GetBooksByTitle, title)
 	}
 	if err != nil {
 		log.Print(err)
@@ -65,7 +74,7 @@ func getBook(response http.ResponseWriter, request *http.Request) {
 			log.Print(err)
 		}
 		if includeAuthor == "true" {
-			row := db.QueryRow("select * from Authors where id=?", book.Author.Id)
+			row := db.QueryRow(GetAuthorById, book.Author.Id)
 			row.Scan(&book.Author.Id, &book.Author.FirstName, &book.Author.LastName, &book.Author.Dob, &book.Author.PenName)
 		}
 		books = append(books, book)
@@ -94,7 +103,7 @@ func getBookById(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 	}
-	authorrow := db.QueryRow("select * from Authors where id=?;", book.Author.Id)
+	authorrow := db.QueryRow(GetAuthorById, book.Author.Id)
 	err = authorrow.Scan(&book.Author.Id, &book.Author.FirstName, &book.Author.LastName, &book.Author.Dob, &book.Author.PenName)
 	if err != nil {
 		log.Print(err)
@@ -129,7 +138,7 @@ func postBook(response http.ResponseWriter, request *http.Request) {
 		json.NewEncoder(response).Encode(Book{})
 		return
 	}
-	if !(b.Publication == "Scholastic" || b.Publication == "Penguin" || b.Publication == "Arihanth") {
+	if !(b.Publication == PubName1 || b.Publication == PubName2 || b.Publication == PubName3) {
 		response.WriteHeader(400)
 		json.NewEncoder(response).Encode(Book{})
 		return
@@ -238,6 +247,67 @@ func putAuthor(response http.ResponseWriter, request *http.Request) {
 }
 
 func putBook(response http.ResponseWriter, request *http.Request) {
+	db := dbConn()
+	var book Book
+	body, err := io.ReadAll(request.Body)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(body, &book)
+	if err != nil {
+		return
+	}
+	if book.Title == "" {
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !(book.Publication == PubName1 || book.Publication == PubName2 || book.Publication == PubName3) {
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	publicationDate := strings.Split(book.PublishedDate, "/")
+	if len(publicationDate) < 3 {
+		return
+	}
+	yr, _ := strconv.Atoi(publicationDate[2])
+	if yr > time.Now().Year() || yr < 1880 {
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	params := mux.Vars(request)
+	ID, err := strconv.Atoi(params["id"])
+	if ID <= 0 {
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	result, err := db.Query("SELECT id FROM Authors WHERE id = ?", book.Author.Id)
+	if err != nil {
+		log.Print(err)
+	}
+
+	if !result.Next() {
+		log.Print("author not present", book.Author.Id)
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	result, err = db.Query("SELECT * FROM Books WHERE id = ?", book.Id)
+	if err != nil {
+		log.Print(err)
+	}
+	if !result.Next() {
+		log.Print("Book not present")
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	result, err = db.Query("UPDATE Books SET title = ? ,publication = ? ,published_date = ?,author_id=?  WHERE id =?", book.Title, book.Publication, book.PublishedDate, book.Author.Id, ID)
+	if err != nil {
+		log.Print(err)
+	}
 
 }
 

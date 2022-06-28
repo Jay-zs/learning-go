@@ -103,7 +103,7 @@ func TestPostBook(t *testing.T) {
 		expRes    Book
 		expStatus int
 	}{
-		{"Valid Details", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Penguin", PublishedDate: "11/03/2002"}, Book{5, "Jay", Author{Id: 1}, "Penguin", "11/03/2002"}, 200},
+		{"Valid Details", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Penguin", PublishedDate: "11/03/2002"}, Book{1, "Jay", Author{Id: 1}, "Penguin", "11/03/2002"}, 200},
 		{"Publication should be Scholastic/Penguin/Arihanth", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
 		{"Published date should be between 1880 and 2022", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/1870"}, Book{}, http.StatusBadRequest},
 		{"Published date should be between 1880 and 2022", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/2222"}, Book{}, http.StatusBadRequest},
@@ -165,32 +165,31 @@ func TestPutBook(t *testing.T) {
 		desc      string
 		reqId     string
 		reqBody   Book
-		expRes    Book
 		expStatus int
 	}{
-		{"Valid Details", "1", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Penguin", PublishedDate: "11/03/2002"}, Book{}, 200},
-		{"Publication should be Scholastic/Penguin/Arihanth", "1", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
-		{"Published date should be between 1880 and 2022", "1", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/1870"}, Book{}, http.StatusBadRequest},
-		{"Published date should be between 1880 and 2022", "1", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/2222"}, Book{}, http.StatusBadRequest},
-		{"Author should exist", "1", Book{}, Book{}, http.StatusBadRequest},
-		{"Title can't be empty", "1", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: ""}, Book{}, http.StatusBadRequest},
+		{"valid case id exist", "1", Book{1, "title", Author{Id: 1},
+			"Arihanth", "18/08/2018"}, http.StatusOK},
+		{"invalid case id not exist", "1000", Book{1000, "title1", Author{Id: 9},
+			"Arihanth", "18/08/2018"}, http.StatusBadRequest},
+		{"Invalid book name.", "1", Book{1, "", Author{Id: 1},
+			"Oxford", "21/04/1985"}, http.StatusBadRequest},
+		{"Invalid author.", "1", Book{1, "title3", Author{Id: 2},
+			"Oxford", "21/04/1985"}, http.StatusBadRequest},
 	}
-	for i, tc := range testcases {
-		w := httptest.NewRecorder()
-		body, _ := json.Marshal(tc.reqBody)
-		req := httptest.NewRequest(http.MethodPost, "localhost:8000/book/{id}", bytes.NewReader(body))
-		putBook(w, req)
-		defer w.Result().Body.Close()
 
-		if w.Result().StatusCode != tc.expStatus {
-			t.Errorf("%v test failed %v", i, tc.desc)
+	for i, tc := range testcases {
+		body, err := json.Marshal(tc.reqBody)
+		if err != nil {
+			t.Errorf("can not convert data into []byte")
 		}
-		res, _ := io.ReadAll(w.Result().Body)
-		resBook := Book{}
-		json.Unmarshal(res, &resBook)
-		if resBook != tc.expRes {
-			t.Errorf("%v test failed %v", i, tc.desc)
+		req := httptest.NewRequest(http.MethodPut, "http://localhost:8000/book/{id}", bytes.NewBuffer(body))
+		res := httptest.NewRecorder()
+		req = mux.SetURLVars(req, map[string]string{"id": tc.reqId})
+		putBook(res, req)
+		if res.Result().StatusCode != tc.expStatus {
+			t.Errorf("test cases fail at %d", i)
 		}
+
 	}
 }
 
@@ -212,7 +211,7 @@ func TestPutAuthor(t *testing.T) {
 		if err != nil {
 			t.Errorf("can not convert data into []byte")
 		}
-		req := httptest.NewRequest(http.MethodPost, "http://localhost:8000/author/{id}", bytes.NewReader(body))
+		req := httptest.NewRequest(http.MethodPut, "http://localhost:8000/author/{id}", bytes.NewReader(body))
 		res := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{"id": tc.reqId})
 		putAuthor(res, req)
@@ -253,6 +252,7 @@ func TestDeleteAuthor(t *testing.T) {
 	}{
 		{"Valid Details", "1", http.StatusOK},
 		{"Author does not exists", "100", http.StatusBadRequest},
+		{"invalid id", "abc", http.StatusBadRequest},
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
