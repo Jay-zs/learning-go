@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/gorilla/mux"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,12 +19,12 @@ func TestGetBook(t *testing.T) {
 		expStatus int
 	}{
 		{"get all books", "/book", []Book{
-			{1, "Jay", Author{Id: 1}, "Pengiun", "11/03/2002"},
+			{1, "Jay", Author{Id: 1}, "Penguin", "11/03/2002"},
 		}, http.StatusOK},
 		{"get all books with query param", "/book?title=Jay", []Book{
-			{1, "Jay", Author{Id: 1}, "Pengiun", "11/03/2002"}}, http.StatusOK},
+			{1, "Jay", Author{Id: 1}, "Penguin", "11/03/2002"}}, http.StatusOK},
 		{"get all books with query param", "/book?includeAuthor=true", []Book{
-			{1, "Jay", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "Pengiun", "11/03/2002"}}, http.StatusOK},
+			{1, "Jay", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "Penguin", "11/03/2002"}}, http.StatusOK},
 	}
 	for j, tc := range testcases {
 		w := httptest.NewRecorder()
@@ -62,13 +63,14 @@ func TestGetBookById(t *testing.T) {
 		expRes    Book
 		expStatus int
 	}{
-		{"get book", "/book/1", Book{1, "Jay", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "Pengiun", "11/03/2002"}, http.StatusOK},
-		{"Id doesn't exist", "/book/1000", Book{}, http.StatusNotFound},
-		{"Invalid Id", "/book/abc", Book{}, http.StatusBadRequest},
+		{"get book", "1", Book{1, "Jay", Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, "Penguin", "11/03/2002"}, http.StatusOK},
+		{"Id doesn't exist", "1000", Book{}, http.StatusNotFound},
+		{"Invalid Id", "abc", Book{}, http.StatusBadRequest},
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "localhost:8000"+tc.req, nil)
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:8000/book/{id}", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": tc.req})
 		getBookById(w, req)
 		defer w.Result().Body.Close()
 
@@ -101,13 +103,13 @@ func TestPostBook(t *testing.T) {
 		expRes    Book
 		expStatus int
 	}{
-		{"Valid Details", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{1, "Jay", Author{Id: 1}, "Pengiun", "11/03/2002"}, 200},
-		{"Publication should be Scholastic/Pengiun/Arihanth", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
+		{"Valid Details", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Penguin", PublishedDate: "11/03/2002"}, Book{5, "Jay", Author{Id: 1}, "Penguin", "11/03/2002"}, 200},
+		{"Publication should be Scholastic/Penguin/Arihanth", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
 		{"Published date should be between 1880 and 2022", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/1870"}, Book{}, http.StatusBadRequest},
 		{"Published date should be between 1880 and 2022", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/2222"}, Book{}, http.StatusBadRequest},
-		{"Author should exist", Book{Title: "Jay", Author: Author{Id: 2}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
+		{"Author should exist", Book{Title: "Jay", Author: Author{Id: 2}, Publication: "Penguin", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
 		{"Title can't be empty", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: ""}, Book{}, http.StatusBadRequest},
-		{"Book already exists", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
+		{"Book already exists", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Penguin", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
@@ -166,8 +168,8 @@ func TestPutBook(t *testing.T) {
 		expRes    Book
 		expStatus int
 	}{
-		{"Valid Details", "1", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Pengiun", PublishedDate: "11/03/2002"}, Book{}, 200},
-		{"Publication should be Scholastic/Pengiun/Arihanth", "1", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
+		{"Valid Details", "1", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Penguin", PublishedDate: "11/03/2002"}, Book{}, 200},
+		{"Publication should be Scholastic/Penguin/Arihanth", "1", Book{Title: "Jay", Author: Author{Id: 1}, Publication: "Jay", PublishedDate: "11/03/2002"}, Book{}, http.StatusBadRequest},
 		{"Published date should be between 1880 and 2022", "1", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/1870"}, Book{}, http.StatusBadRequest},
 		{"Published date should be between 1880 and 2022", "1", Book{Title: "", Author: Author{Id: 1}, Publication: "", PublishedDate: "1/1/2222"}, Book{}, http.StatusBadRequest},
 		{"Author should exist", "1", Book{}, Book{}, http.StatusBadRequest},
@@ -176,7 +178,7 @@ func TestPutBook(t *testing.T) {
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
 		body, _ := json.Marshal(tc.reqBody)
-		req := httptest.NewRequest(http.MethodPost, "localhost:8000/book/"+tc.reqId, bytes.NewReader(body))
+		req := httptest.NewRequest(http.MethodPost, "localhost:8000/book/{id}", bytes.NewReader(body))
 		putBook(w, req)
 		defer w.Result().Body.Close()
 
@@ -195,29 +197,29 @@ func TestPutBook(t *testing.T) {
 func TestPutAuthor(t *testing.T) {
 	testcases := []struct {
 		desc      string
-		reqBody   Author
-		expRes    Author
+		reqId     string
+		reqData   Author
 		expStatus int
 	}{
-		{"Valid details", Author{FirstName: "RD", LastName: "Sharma", Dob: "2/11/1989", PenName: "Sharma"}, Author{1, "RD", "Sharma", "2/11/1989", "Sharma"}, http.StatusOK},
-		{"InValid details", Author{FirstName: "", LastName: "Sharma", Dob: "2/11/1989", PenName: "Sharma"}, Author{}, http.StatusBadRequest},
-	}
-	for i, tc := range testcases {
-		w := httptest.NewRecorder()
-		body, _ := json.Marshal(tc.reqBody)
-		req := httptest.NewRequest(http.MethodPost, "localhost:8000/author", bytes.NewReader(body))
-		putAuthor(w, req)
-		defer w.Result().Body.Close()
+		{"Valid case update firstname.", "1", Author{1, "Rohan", "gupta", "01/07/2001", "GCC"}, http.StatusOK},
 
-		if w.Result().StatusCode != tc.expStatus {
-			t.Errorf("%v test failed %v", i, tc.desc)
+		{"Valid case id not present.", "1000", Author{1000, "Mohan", "chandra", "01/07/2001", "GCC"}, http.StatusBadRequest},
+	}
+
+	for i, tc := range testcases {
+
+		body, err := json.Marshal(tc.reqData)
+		if err != nil {
+			t.Errorf("can not convert data into []byte")
 		}
-		res, _ := io.ReadAll(w.Result().Body)
-		resAuthor := Author{}
-		json.Unmarshal(res, &resAuthor)
-		if resAuthor != tc.expRes {
-			t.Errorf("%v test failed %v", i, tc.desc)
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:8000/author/{id}", bytes.NewReader(body))
+		res := httptest.NewRecorder()
+		req = mux.SetURLVars(req, map[string]string{"id": tc.reqId})
+		putAuthor(res, req)
+		if res.Result().StatusCode != tc.expStatus {
+			t.Errorf("%v test cases fail at %v", i, tc.desc)
 		}
+
 	}
 }
 
@@ -227,12 +229,13 @@ func TestDeleteBook(t *testing.T) {
 		reqId     string
 		expStatus int
 	}{
-		{"Valid Details", "2", http.StatusOK},
-		{"Book does not exists", "100", http.StatusNotFound},
+		{"Valid Details", "5", http.StatusOK},
+		{"Book does not exists", "100", http.StatusBadRequest},
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodDelete, "http://localhost:8000/book/"+tc.reqId, nil)
+		req := httptest.NewRequest(http.MethodDelete, "http://localhost:8000/book/{id}", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": tc.reqId})
 		deleteBook(w, req)
 		defer w.Result().Body.Close()
 
@@ -253,7 +256,8 @@ func TestDeleteAuthor(t *testing.T) {
 	}
 	for i, tc := range testcases {
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodDelete, "localhost:8000/author/"+tc.reqId, nil)
+		req := httptest.NewRequest(http.MethodDelete, "localhost:8000/author/{id}", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": tc.reqId})
 		deleteAuthor(w, req)
 		defer w.Result().Body.Close()
 
